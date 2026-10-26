@@ -51,6 +51,6 @@ GET /ops/pending        what is waiting for ops: approvals and escalations
 
 **Submit**
 
-- Clone the repo (don't fork it), build in a new private repo of your own, add `pratham-saraf` as a collaborator, and reply to this email with the link before the deadline.
+- Clone the repo (don't fork it), build in a new private repo of your own, add `Sarthak-pyard` as a collaborator, and reply to this email with the link before the deadline.
 - README, one page maximum: how to run it, your agent's design (its tools, what the model decides and what your code decides), assumptions you made, your eval results, what you skipped.
 - The raw exports of your AI sessions in `ai-logs/`, not summaries or screenshots. `SUBMISSION.md` has the logistics.
