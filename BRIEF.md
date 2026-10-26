@@ -1,7 +1,7 @@
 # Rider Payout Dispute Desk
 
 - ProcureYard take-home, ML/AI Engineer Intern.
-- Due **Thursday 1 October, 2:30 PM IST**. A 30-minute call follows.
+- Due **24 hours after you receive the assignment email**. A 30-minute call follows.
 - AI tools allowed. Python or Node.js, any agent framework or none, any LLM provider (the free tiers of Groq and Gemini are enough).
 
 QuickDrop is a fictional delivery company with about 5,000 riders. Its ops team handed us the material below, as it came.
