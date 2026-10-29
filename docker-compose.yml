@@ -1,6 +1,43 @@
-# Starter file. Add your own services (your app, Postgres) next to payswift. Leave payswift as it is.
 services:
   payswift:
     build: ./payswift
     ports:
       - "8081:8081"
+
+  db:
+    image: postgres:16-alpine
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: quickdrop
+    ports:
+      - "5432:5432"
+    volumes:
+      - quickdrop_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d quickdrop"]
+      interval: 2s
+      timeout: 2s
+      retries: 10
+
+  app:
+    build: .
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - PAYSWIFT_BASE_URL=http://payswift:8081
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/quickdrop
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - GROQ_MODEL=${GROQ_MODEL:-openai/gpt-oss-120b}
+      - PORT=8000
+      - HOST=0.0.0.0
+    depends_on:
+      db:
+        condition: service_healthy
+      payswift:
+        condition: service_started
+
+volumes:
+  quickdrop_pgdata:
