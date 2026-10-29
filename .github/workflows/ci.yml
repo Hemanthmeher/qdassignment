@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt -q
+
+      - name: Verify application & database initialization
+        env:
+          DATABASE_URL: "sqlite:///./quickdrop_test.db"
+          GROQ_API_KEY: "test"
+          PAYSWIFT_BASE_URL: "http://localhost:8081"
+        run: python -c "from app.main import app; from app.database import init_db; init_db(); print('QuickDrop service and database verified.')"

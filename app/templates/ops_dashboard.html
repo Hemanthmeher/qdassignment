@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuickDrop - Rider Payout Dispute Desk</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen">
+  <header class="border-b border-slate-800 bg-slate-950/80 backdrop-blur px-8 py-4 flex justify-between items-center sticky top-0 z-50">
+    <div class="flex items-center space-x-3">
+      <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-500/20">QD</div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight">QuickDrop Dispute Desk</h1>
+        <p class="text-xs text-slate-400">Autonomous Rider Payouts & Ops Approval Portal</p>
+      </div>
+    </div>
+    <div class="flex items-center space-x-4">
+      <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1.5 animate-pulse"></span>
+        PaySwift Sandbox Live
+      </span>
+      <button onclick="fetchPending(); fetchTraces();" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+        Refresh
+      </button>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-8 py-8 space-y-8">
+    <!-- Top Stats Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 shadow-sm">
+        <div class="text-xs font-medium text-slate-400">Pending Approvals</div>
+        <div id="stat-approvals" class="text-2xl font-bold mt-2 text-amber-400">0</div>
+        <div class="text-xs text-slate-500 mt-1">> ₹200 or repeat disputes</div>
+      </div>
+      <div class="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 shadow-sm">
+        <div class="text-xs font-medium text-slate-400">Pending Escalations</div>
+        <div id="stat-escalations" class="text-2xl font-bold mt-2 text-indigo-400">0</div>
+        <div class="text-xs text-slate-500 mt-1">Medical, pushback & exceptions</div>
+      </div>
+      <div class="bg-slate-800/50 border border-slate-700/60 rounded-xl p-5 shadow-sm">
+        <div class="text-xs font-medium text-slate-400">Policy Rules & Limits</div>
+        <div class="grid grid-cols-2 gap-2 mt-2 pt-0.5">
+          <div>
+            <div class="text-[11px] text-slate-400">Auto-Pay Rule</div>
+            <div class="text-xl font-bold text-emerald-400">≤ ₹200</div>
+            <div class="text-[10px] text-slate-500">Max 1/rider/day</div>
+          </div>
+          <div class="border-l border-slate-700/60 pl-3">
+            <div class="text-[11px] text-slate-400">Dispute Lookback</div>
+            <div class="text-xl font-bold text-blue-400">7 Days</div>
+            <div class="text-[10px] text-slate-500">Calendar IST</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pending Queue Table -->
+    <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl overflow-hidden shadow-lg">
+      <div class="px-6 py-4 border-b border-slate-700/60 flex justify-between items-center bg-slate-800/60">
+        <div>
+          <h2 class="font-semibold text-base">Items Waiting for Ops Review (`GET /ops/pending`)</h2>
+          <p class="text-xs text-slate-400">Financial approvals and edge-case exceptions requiring human decision</p>
+        </div>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-900/50 text-xs text-slate-400 uppercase tracking-wider border-b border-slate-700/60">
+            <tr>
+              <th class="px-6 py-3.5">ID</th>
+              <th class="px-6 py-3.5">Rider ID</th>
+              <th class="px-6 py-3.5">Type</th>
+              <th class="px-6 py-3.5">Amount</th>
+              <th class="px-6 py-3.5">Reason</th>
+              <th class="px-6 py-3.5">Created At</th>
+              <th class="px-6 py-3.5 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pending-body" class="divide-y divide-slate-700/40 font-normal">
+            <tr>
+              <td colspan="7" class="px-6 py-8 text-center text-slate-500 text-sm">No items pending ops review. All clear!</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Trace & Conversation Inspector -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <!-- Conversation & Trace Inspector -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 shadow-lg">
+        <h3 class="font-semibold text-base mb-2">Rider Trace Inspector (`GET /trace/{rider_id}`)</h3>
+        <p class="text-xs text-slate-400 mb-4">Chronological log of inbound messages, policy tool calls, and decisions</p>
+        <div class="flex space-x-2 mb-4">
+          <input id="trace-rider-input" type="text" placeholder="e.g. R003" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 flex-1 focus:outline-none focus:border-indigo-500">
+          <button onclick="fetchTraces()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition">
+            Load Trace
+          </button>
+        </div>
+        <div id="trace-container" class="bg-slate-950 rounded-lg p-4 font-mono text-xs max-h-96 overflow-y-auto space-y-3 border border-slate-800 text-slate-300">
+          <span class="text-slate-500">Enter a rider ID above to inspect full agent execution trace.</span>
+        </div>
+      </div>
+
+      <!-- Quick Message Simulator -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-xl p-6 shadow-lg">
+        <h3 class="font-semibold text-base mb-2">Interactive WhatsApp Simulator (`POST /messages`)</h3>
+        <p class="text-xs text-slate-400 mb-4">Send a simulated message directly into the dispute agent webhook</p>
+        <div class="space-y-3">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Rider ID</label>
+              <input id="sim-rider" type="text" value="R003" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+            <div>
+              <label class="text-xs text-slate-400 block mb-1">Message ID</label>
+              <input id="sim-msg-id" type="text" value="wamid.SIMULATOR01" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100">
+            </div>
+          </div>
+          <div>
+            <label class="text-xs text-slate-400 block mb-1">Message Text</label>
+            <textarea id="sim-text" rows="3" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100" placeholder="e.g. Bhai order T926334 ka surge nahi mila, 20 tarikh wala">Bhai order T926334 ka surge nahi mila, 20 tarikh wala</textarea>
+          </div>
+          <button onclick="sendSimulatedMessage()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2.5 rounded-lg text-sm transition">
+            Send Message to Webhook
+          </button>
+          <div id="sim-response-box" class="hidden mt-3 p-3 bg-slate-900 border border-slate-800 rounded-lg text-xs">
+            <div class="text-slate-400 font-medium mb-1">Agent Outbound Reply:</div>
+            <div id="sim-reply-text" class="text-emerald-400 font-mono whitespace-pre-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    async function fetchPending() {
+      try {
+        const res = await fetch('/ops/pending');
+        const items = await res.json();
+        
+        let approvals = 0;
+        let escalations = 0;
+        const tbody = document.getElementById('pending-body');
+        
+        if (!items || items.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="px-6 py-8 text-center text-slate-500 text-sm">No items pending ops review. All clear!</td></tr>`;
+          document.getElementById('stat-approvals').innerText = '0';
+          document.getElementById('stat-escalations').innerText = '0';
+          return;
+        }
+
+        tbody.innerHTML = '';
+        items.forEach(item => {
+          if (item.type === 'approval') approvals++;
+          if (item.type === 'escalation') escalations++;
+
+          const tr = document.createElement('tr');
+          tr.className = 'hover:bg-slate-800/50 transition';
+          tr.innerHTML = `
+            <td class="px-6 py-4 font-mono text-xs text-slate-400">${item.id}</td>
+            <td class="px-6 py-4 font-semibold text-slate-200">${item.rider_id}</td>
+            <td class="px-6 py-4">
+              <span class="px-2 py-0.5 rounded text-xs font-medium ${item.type === 'approval' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/30'}">
+                ${item.type}
+              </span>
+            </td>
+            <td class="px-6 py-4 font-mono font-medium ${item.amount ? 'text-emerald-400' : 'text-slate-500'}">
+              ${item.amount ? '₹' + item.amount : '—'}
+            </td>
+            <td class="px-6 py-4 text-xs text-slate-300 max-w-xs truncate" title="${item.reason}">${item.reason}</td>
+            <td class="px-6 py-4 text-xs text-slate-400">${item.created_at.slice(0, 16)}</td>
+            <td class="px-6 py-4 text-center">
+              <div class="inline-flex items-center justify-center gap-3">
+                <button onclick="resolveItem('${item.id}', 'approve')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-lg text-xs font-semibold shadow-sm shadow-emerald-900/30 transition">Approve</button>
+                <button onclick="resolveItem('${item.id}', 'reject')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-500 active:scale-95 text-white rounded-lg text-xs font-semibold shadow-sm shadow-rose-900/30 transition">Reject</button>
+              </div>
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+
+        document.getElementById('stat-approvals').innerText = approvals;
+        document.getElementById('stat-escalations').innerText = escalations;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function resolveItem(id, action) {
+      if (!confirm(`Are you sure you want to ${action} item ${id}?`)) return;
+      try {
+        const res = await fetch(`/ops/${id}/${action}`, { method: 'POST' });
+        if (res.ok) {
+          fetchPending();
+        } else {
+          alert('Action failed');
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function fetchTraces() {
+      const riderId = document.getElementById('trace-rider-input').value.trim();
+      if (!riderId) return;
+
+      const container = document.getElementById('trace-container');
+      container.innerHTML = '<span class="text-slate-500">Loading traces...</span>';
+
+      try {
+        const res = await fetch(`/trace/${riderId}`);
+        const traces = await res.json();
+
+        if (!traces || traces.length === 0) {
+          container.innerHTML = `<span class="text-slate-500">No traces recorded yet for rider ${riderId}.</span>`;
+          return;
+        }
+
+        container.innerHTML = '';
+        traces.forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'p-3 bg-slate-900 border border-slate-800 rounded-lg space-y-1';
+          
+          let badgeColor = 'bg-slate-700 text-slate-300';
+          if (t.type === 'message_in') badgeColor = 'bg-blue-600 text-blue-100';
+          if (t.type === 'tool_call') badgeColor = 'bg-amber-600 text-amber-100';
+          if (t.type === 'decision') badgeColor = 'bg-purple-600 text-purple-100';
+          if (t.type === 'reply') badgeColor = 'bg-emerald-600 text-emerald-100';
+          if (t.type === 'error') badgeColor = 'bg-rose-600 text-rose-100';
+
+          div.innerHTML = `
+            <div class="flex justify-between items-center text-xs">
+              <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${badgeColor}">${t.type}</span>
+              <span class="text-slate-500">${t.at}</span>
+            </div>
+            <div class="font-bold text-slate-200">${t.name}</div>
+            ${t.input ? `<div class="text-slate-400"><strong class="text-slate-500">IN:</strong> ${JSON.stringify(t.input)}</div>` : ''}
+            ${t.output ? `<div class="text-slate-300"><strong class="text-slate-500">OUT:</strong> ${typeof t.output === 'string' ? t.output : JSON.stringify(t.output)}</div>` : ''}
+          `;
+          container.appendChild(div);
+        });
+      } catch (err) {
+        container.innerHTML = `<span class="text-rose-400">Error loading traces: ${err}</span>`;
+      }
+    }
+
+    async function sendSimulatedMessage() {
+      const rider_id = document.getElementById('sim-rider').value.trim();
+      const message_id = document.getElementById('sim-msg-id').value.trim() + '.' + Date.now();
+      const text = document.getElementById('sim-text').value.trim();
+
+      const resBox = document.getElementById('sim-response-box');
+      const replyText = document.getElementById('sim-reply-text');
+      resBox.classList.remove('hidden');
+      replyText.innerText = 'Agent is thinking...';
+
+      try {
+        const res = await fetch('/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message_id: message_id,
+            rider_id: rider_id,
+            text: text,
+            received_at: new Date().toISOString()
+          })
+        });
+        const data = await res.json();
+        replyText.innerText = data.reply;
+        
+        // Auto-refresh tables
+        fetchPending();
+        document.getElementById('trace-rider-input').value = rider_id;
+        fetchTraces();
+      } catch (err) {
+        replyText.innerText = 'Error: ' + err;
+      }
+    }
+
+    // Auto-fetch on load
+    fetchPending();
+  </script>
+</body>
+</html>
