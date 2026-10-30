@@ -232,6 +232,8 @@
           if (t.type === 'tool_call') badgeColor = 'bg-amber-600 text-amber-100';
           if (t.type === 'decision') badgeColor = 'bg-purple-600 text-purple-100';
           if (t.type === 'reply') badgeColor = 'bg-emerald-600 text-emerald-100';
+          if (t.type === 'ops_approved') badgeColor = 'bg-teal-600 text-teal-100';
+          if (t.type === 'ops_rejected') badgeColor = 'bg-orange-600 text-orange-100';
           if (t.type === 'error') badgeColor = 'bg-rose-600 text-rose-100';
 
           div.innerHTML = `

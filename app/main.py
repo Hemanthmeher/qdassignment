@@ -170,9 +170,30 @@ async def approve_pending_item(
         )
 
     item.status = "approved"
-    item.resolved_at = datetime.now(timezone.utc).isoformat()
+    resolved_time = datetime.now(timezone.utc).isoformat()
+    item.resolved_at = resolved_time
     item.notes = payload.notes
     db.commit()
+
+    # Append explicit trace log entry for Ops Approval to rider audit trail
+    record_trace_step(
+        session=db,
+        rider_id=item.rider_id,
+        step_type="ops_approved",
+        name="ops_item_approved",
+        input_data={
+            "pending_id": pending_id,
+            "type": item.type,
+            "amount": item.amount,
+            "reason": item.reason,
+            "notes": payload.notes,
+        },
+        output_data={
+            "status": "approved",
+            "payout": payout_result,
+        },
+        timestamp_str=resolved_time,
+    )
 
     return {
         "status": "approved",
@@ -199,17 +220,26 @@ async def reject_pending_item(
         raise HTTPException(status_code=400, detail=f"Item is already {item.status}")
 
     item.status = "rejected"
-    item.resolved_at = datetime.now(timezone.utc).isoformat()
+    resolved_time = datetime.now(timezone.utc).isoformat()
+    item.resolved_at = resolved_time
     item.notes = payload.notes
     db.commit()
 
+    # Append explicit trace log entry for Ops Rejection to rider audit trail
     record_trace_step(
         session=db,
         rider_id=item.rider_id,
-        step_type="decision",
+        step_type="ops_rejected",
         name="ops_item_rejected",
-        input_data={"pending_id": pending_id, "notes": payload.notes},
+        input_data={
+            "pending_id": pending_id,
+            "type": item.type,
+            "amount": item.amount,
+            "reason": item.reason,
+            "notes": payload.notes,
+        },
         output_data={"status": "rejected"},
+        timestamp_str=resolved_time,
     )
 
     return {"status": "rejected", "id": pending_id, "rider_id": item.rider_id}

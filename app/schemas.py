@@ -16,7 +16,7 @@ class OutboundReply(BaseModel):
 
 class TraceItem(BaseModel):
     at: str
-    type: Literal["message_in", "tool_call", "decision", "reply", "error"]
+    type: Literal["message_in", "tool_call", "decision", "reply", "error", "ops_approved", "ops_rejected"]
     name: str
     input: Any = None
     output: Any = None
